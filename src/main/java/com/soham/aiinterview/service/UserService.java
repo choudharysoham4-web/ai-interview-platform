@@ -6,11 +6,14 @@ import com.soham.aiinterview.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.soham.aiinterview.jwt.JwtUtil;
 
 import java.util.List;
 
 @Service
 public class UserService {
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Autowired
     private UserRepository userRepository;
@@ -43,7 +46,7 @@ public class UserService {
         );
 
         if (passwordMatches) {
-            return "Login Successful";
+            return jwtUtil.generateToken(user.getEmail());
         } else {
             return "Invalid Password";
         }
