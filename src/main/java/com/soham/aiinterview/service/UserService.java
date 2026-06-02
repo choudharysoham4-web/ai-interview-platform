@@ -2,18 +2,17 @@ package com.soham.aiinterview.service;
 
 import com.soham.aiinterview.dto.LoginRequest;
 import com.soham.aiinterview.entity.User;
+import com.soham.aiinterview.jwt.JwtUtil;
 import com.soham.aiinterview.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import com.soham.aiinterview.jwt.JwtUtil;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
-    @Autowired
-    private JwtUtil jwtUtil;
 
     @Autowired
     private UserRepository userRepository;
@@ -21,12 +20,8 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public User registerUser(User user) {
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-        return userRepository.save(user);
-    }
+    @Autowired
+    private JwtUtil jwtUtil;
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -34,11 +29,14 @@ public class UserService {
 
     public String login(LoginRequest loginRequest) {
 
-        User user = userRepository.findByEmail(loginRequest.getEmail());
+        Optional<User> userOptional =
+                userRepository.findByEmail(loginRequest.getEmail());
 
-        if (user == null) {
+        if (userOptional.isEmpty()) {
             return "User not found";
         }
+
+        User user = userOptional.get();
 
         boolean passwordMatches = passwordEncoder.matches(
                 loginRequest.getPassword(),

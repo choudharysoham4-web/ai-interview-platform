@@ -1,47 +1,68 @@
 package com.soham.aiinterview.controller;
 
+import com.soham.aiinterview.dto.AuthResponse;
 import com.soham.aiinterview.dto.LoginRequest;
+import com.soham.aiinterview.dto.RegisterRequest;
 import com.soham.aiinterview.entity.User;
-import com.soham.aiinterview.jwt.JwtUtil;
-import com.soham.aiinterview.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
+import com.soham.aiinterview.jwt.JwtService;
+import com.soham.aiinterview.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-
-import java.util.List;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/auth")
+@CrossOrigin("*")
 public class UserController {
-    @Autowired
-    private JwtUtil jwtUtil;
 
     @Autowired
-    private UserService userService;
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtService jwtService;
 
     @PostMapping("/register")
-    public User registerUser(@RequestBody User user) {
-        return userService.registerUser(user);
-    }
+    public AuthResponse register(@RequestBody RegisterRequest request) {
 
-    @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+        Optional<User> existingUser =
+                userRepository.findByEmail(request.getEmail());
+
+        if (existingUser.isPresent()) {
+            return new AuthResponse(null, "User already exists");
+        }
+
+        User user = new User(
+                request.getName(),
+                request.getEmail(),
+                request.getPassword()
+        );
+
+        userRepository.save(user);
+
+        String token = jwtService.generateToken(user.getEmail());
+
+        return new AuthResponse(token, "Registration successful");
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody LoginRequest loginRequest) {
-        return userService.login(loginRequest);
-    }
-    @GetMapping("/profile")
-    public String profile(@RequestHeader("Authorization") String authHeader) {
+    public AuthResponse login(@RequestBody LoginRequest request) {
 
-        String token = authHeader.substring(7);
+        Optional<User> userOptional =
+                userRepository.findByEmail(request.getEmail());
 
-        String email = jwtUtil.extractEmail(token);
+        if (userOptional.isEmpty()) {
+            return new AuthResponse(null, "User not found");
+        }
 
-        return "Welcome " + email;
+        User user = userOptional.get();
 
+        if (!user.getPassword().equals(request.getPassword())) {
+            return new AuthResponse(null, "Invalid password");
+        }
+
+        String token = jwtService.generateToken(user.getEmail());
+
+        return new AuthResponse(token, "Login successful");
     }
 }
